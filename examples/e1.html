@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-	<title>Gruff</title>
+	<title>Data Debonair</title>
 	<meta name="author" content="Nathan Good">
 	<style type="text/css">
 	    html, body {margin: 0;}
@@ -14,195 +14,20 @@
     <!-- Html stuff on the page<br /> here is a good example -->
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="../libs/rapheal.js"></script>
+    <script type="text/javascript" src="../libs/debonair.js"></script>
     <script type="text/javascript">
-        // TODO
-        //  - Support negative values :-)
-        //  - Clean up to support better POOP style
-        //  - Continue to break things out
-        //  - Line chart
-        //  - Bar chart groups: allow for a single label on a group (e.g. use first dataset's labels by default)
-        //  - Bar charts: other shapes?  blocks instead of solid columns? DONE
-
-        var Grf = {
-            // general graph specifics
-            graph: {
-                w: $(window).width(),
-                h: $(window).height()
-            },
-            normalized: {},
-            margin: 100, // margin around graph
-            grid: false, // todo grid line support
-            sets: [],
-            animation: {
-                speed: 3000,
-                method: "elastic"
-            },
-            _max: function(a, max, start) {
-                max = max || 0; start = start || 0;
-                if (start == a.length) return max;
-                return Grf._max(a, a[start] > max ? a[start] : max, start + 1);
-            },
-            // It gets the people going
-            init: function(data, settings) {
-                Grf.paper = Raphael(0, 0, Grf.graph.w, Grf.graph.h);
-
-                Grf.maxLength = 0; // todo get the longest data set
-                Grf.maxValue  = 0; // todo get max
-                // Turn bare bones arrays into dataset objects
-                Grf.data = $.map(data, function(v, k) {
-                    var d = $.isArray(v) ? {data:v} : v;
-                    // Max Length
-                    if (d.data.length > Grf.maxLength) Grf.maxLength = d.data.length;
-                    // Max Value
-                    var max = Grf._max(d.data);
-                    if (max > Grf.maxValue) Grf.maxValue = max;
-                    return d;
-                });
-            }
-        };
-        
-        Grf.coloring = {
-            method: "tealscale", // default
-            mode: 1, // 0:group, 1:single
-            colors: {
-                highlight: "#fff",
-                lowlight: "#111"
-            },
-            helpers: {
-                // Creates a function that will return a shade
-                // based on the initial hue/saturation given.
-                // The result is a dark-to-light incremental effect.
-                // hue: 0 to 1
-                // saturation: 0 to 1
-                // softener: 0 to 1 (how varied of a range to you want, 0 results in greatest variation)
-                shades: function(hue, saturation, softener) {
-                    return function(i, v) {
-                        var ratio = i/Grf.maxLength;
-                        // Make it a range from 0.2 to 0.8 instead of 0.0 to 1.0
-                        var soften = (softener || 0.2) * (i - Grf.maxLength / 2) / (Grf.maxLength / 2);
-                        return Raphael.color(Raphael.hsl(hue, saturation, ratio - soften));
-                    }
-                },
-                // Get a range of the spectrum (0 to 1 will give you a "rainbow" effect)
-                // start: 0 to 1
-                // end: 0 to 1 (must be greater than start)
-                // saturation: 0 to 1 (default 0.75)
-                // lightness: 0 to 1 (default 0.5)
-                range: function(start, end, saturation, lightness) {
-                    var range = end - start;
-                    return function(i, k) {
-                        var ratio = start + (i/Grf.maxLength) * range
-                        return Raphael.color(Raphael.hsl(ratio, saturation || 0.75, lightness || 0.5));
-                    }
-                }
-            }
-        };
-        
-        // Coloring methods.  Easy to create custom ones
-        // and even easier to create variations based on 
-        // "helper" methods in Grf.coloring.
-        Grf.coloring.methods = {
-            rainbow: Grf.coloring.helpers.range(0, 1),
-            burnt: Grf.coloring.helpers.range(0, 0.2),
-            grass: Grf.coloring.helpers.range(0.2, 0.4),
-            cool: Grf.coloring.helpers.range(0.5, 0.7),
-            grayscale: Grf.coloring.helpers.shades(0, 0),
-            tealscale: Grf.coloring.helpers.shades(.5, .5)
-        };
-        
         // List of data sets in form of 
         // [] or {color:"",title:"",data:[], labels:[]}
         var data = [
             {data:[5,2,6,7,10,3,1], labels: ["A", "B", "C", "D", "E", "F", "G"]}, // Add in some labels
             [1,5,3,4,7,8,9], // Plain old data
             {data:[4,4,4,1,7,9,4], labels: ["A", "B", "C"]}, // we don't need everything labeled...
-            // {data:[5,3,6,8,12,4,1]}, // we don't need labels at all!
-            // {data:[6,2,9,13,5,1,2], labels: "A"} // If string, use same label for all data points!
+            {data:[5,3,6,8,12,4,1]}, // we don't need labels at all!
+            {data:[6,2,9,13,5,1,2], labels: "A"} // If string, use same label for all data points!
         ];
-        
-        //
-        Grf.bar = {
-            gap: 2, // margin between bars
-            groupGap: 60, // gap between bar groups
-            singleLabelMode: true,
-            init: function(data, settings) {
-                Grf.init(data, settings);
-                Grf.normalized.h   = (Grf.graph.h - 2 * Grf.margin) / Grf.maxValue; // max height of a bar
-                Grf.bar.step       = ((Grf.graph.w - 2 * Grf.margin) - Grf.data.length * Grf.bar.groupGap) / (Grf.maxLength * Grf.data.length); // dx for each individual bar
-                Grf.bar.groupStep  = (Grf.graph.w - 2 * Grf.margin) / Grf.maxLength; // dx for each data set
-                Grf.normalized.w   = Grf.bar.step - Grf.bar.gap; // w of each bar
-            },
-            draw: function() {
-                var me = Grf;
-                $.each(Grf.data, function(setK, setV) {
-                    me.paper.setStart();
-                    $.each(setV.data, function(k, v) {
-                        var x =     Grf.margin + Grf.bar.gap / 2 + Grf.bar.groupStep * k + Grf.bar.step * setK;
-                        var y =     Grf.graph.h - Grf.margin;
-                        var cr =    k/Grf.maxLength;
 
-                        // Looks weird because y axis is inverted in Raphael/CSS/DOM (0,0) is the top left corner.
-                        var h = Grf.graph.h - Grf.margin - Grf.normalized.h * v;
-                        var r =     me.paper.rect(x, y, Grf.normalized.w, 0);
-
-                        // var color = Grf.coloring[Grf.coloring.method](k, v);
-                        var colorMode = Grf.coloring.mode ? setK : k;
-                        var color = Grf.coloring.methods[Grf.coloring.method](colorMode, v);
-                        r.attr("fill", color);
-                        r.attr("stroke-width", 0);
-
-                        // Labels
-                        // Are we in single label mode? If so, we only draw
-                        // one label (the first data set's label) and we center
-                        // it within the group.
-                        if (Grf.bar.singleLabelMode === false || setK == 0) {
-                            var tx = Grf.bar.singleLabelMode ? x + (Grf.bar.step * (Grf.data.length / 2)) : x + Grf.bar.step / 2;
-                            var label = $.isArray(Grf.data[setK].labels) && Grf.data[setK].labels[k] || 
-                                typeof Grf.data[setK].labels == "string" && Grf.data[setK].labels || 
-                                v;
-                            var t = me.paper.text(tx, y + 10, label);
-                            t.attr("fill", Grf.bar.singleLabelMode ? Grf.coloring.colors.highlight : color); // t.attr("text-anchor", "middle");
-                        }
-
-                        // Timing gives it a wave effect
-                        r.animate({height: Grf.normalized.h * v, y: h}, 
-                            Grf.animation.speed * ((k+1) / (Grf.maxLength+1)), 
-                            Grf.animation.method, 
-                            function() {
-                                // Add in Labels
-                                if (h + 20 >= y) return; // skip if too small?
-                                var lh = h + 20 >= y ? y - 10 : h + 10;
-                                l = me.paper.text(x + Grf.bar.step / 2, lh, v);
-                                l.attr("fill", Grf.coloring.colors.lowlight);
-                        });
-
-                        r.meta = {color: color, data: v, height: h, label: t};
-
-                        // States
-                        r.mouseover(function() {
-                            this.animate({fill: Grf.coloring.colors.highlight}, 100);
-                        });
-                        r.mouseout(function() {
-                            this.animate({fill: this.meta.color}, 500);
-                        });
-                    });
-                    var set = me.paper.setFinish();
-                    Grf.sets.push(set);
-                });
-            }
-        };
-        
-        // TODO
-        Grf.line = {
-            r: 5, // radius of dot
-            t: 1, // thickness of line
-        };
-        
-        console.log(Grf);
-        
-        Grf.bar.init(data);
-        Grf.bar.draw();
-        
+        Debonair.bar.init(data);
+        Debonair.bar.draw();
     </script>
 </body>
 </html>
