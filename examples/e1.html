@@ -62,7 +62,7 @@
         };
         
         Grf.coloring = {
-            method: "burnt", // default
+            method: "tealscale", // default
             mode: 1, // 0:group, 1:single
             colors: {
                 highlight: "#fff",
@@ -113,17 +113,17 @@
         // List of data sets in form of 
         // [] or {color:"",title:"",data:[], labels:[]}
         var data = [
+            {data:[5,2,6,7,10,3,1], labels: ["A", "B", "C", "D", "E", "F", "G"]}, // Add in some labels
             [1,5,3,4,7,8,9], // Plain old data
-            {data:[5,2,6,7,10,3,0], labels: ["A", "B", "C", "D", "E", "F", "G"]}, // Add in some labels
             {data:[4,4,4,1,7,9,4], labels: ["A", "B", "C"]}, // we don't need everything labeled...
-            {data:[5,3,6,8,12,4,1]}, // we don't need labels at all!
-            {data:[6,2,9,13,5,1,2], labels: "A"} // If string, use same label for all data points!
+            // {data:[5,3,6,8,12,4,1]}, // we don't need labels at all!
+            // {data:[6,2,9,13,5,1,2], labels: "A"} // If string, use same label for all data points!
         ];
         
         //
         Grf.bar = {
-            gap: 10, // margin between bars
-            groupGap: 0, // gap between bar groups
+            gap: 2, // margin between bars
+            groupGap: 60, // gap between bar groups
             singleLabelMode: true,
             init: function(data, settings) {
                 Grf.init(data, settings);
@@ -157,18 +157,23 @@
                         // it within the group.
                         if (Grf.bar.singleLabelMode === false || setK == 0) {
                             var tx = Grf.bar.singleLabelMode ? x + (Grf.bar.step * (Grf.data.length / 2)) : x + Grf.bar.step / 2;
-                            var label = $.isArray(Grf.data[setK].labels) && Grf.data[setK].labels[k] || typeof Grf.data[setK].labels == "string" && Grf.data[setK].labels || v;
+                            var label = $.isArray(Grf.data[setK].labels) && Grf.data[setK].labels[k] || 
+                                typeof Grf.data[setK].labels == "string" && Grf.data[setK].labels || 
+                                v;
                             var t = me.paper.text(tx, y + 10, label);
                             t.attr("fill", Grf.bar.singleLabelMode ? Grf.coloring.colors.highlight : color); // t.attr("text-anchor", "middle");
                         }
 
                         // Timing gives it a wave effect
-                        r.animate({height: Grf.normalized.h * v, y: h}, Grf.animation.speed * ((k+1) / (Grf.maxLength+1)), Grf.animation.method, function() {
-                            // Add in Labels
-                            if (h + 20 >= y) return; // skip if too small?
-                            var lh = h + 20 >= y ? y - 10 : h + 10;
-                            l = me.paper.text(x + Grf.bar.step / 2, lh, v);
-                            l.attr("fill", Grf.coloring.colors.lowlight);
+                        r.animate({height: Grf.normalized.h * v, y: h}, 
+                            Grf.animation.speed * ((k+1) / (Grf.maxLength+1)), 
+                            Grf.animation.method, 
+                            function() {
+                                // Add in Labels
+                                if (h + 20 >= y) return; // skip if too small?
+                                var lh = h + 20 >= y ? y - 10 : h + 10;
+                                l = me.paper.text(x + Grf.bar.step / 2, lh, v);
+                                l.attr("fill", Grf.coloring.colors.lowlight);
                         });
 
                         r.meta = {color: color, data: v, height: h, label: t};
